@@ -29,3 +29,7 @@ type Variable struct {
 	// for downstream to deal with using e.g. TypeDefaults.Apply().
 	TypeDefaults *typeexpr.Defaults
 }
+
+func (v *Variable) IsRequired() bool {
+	return v.DefaultValue.Type().Equals(cty.NilType)
+}
