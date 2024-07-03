@@ -4,6 +4,7 @@
 package module
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/typeexpr"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -11,6 +12,7 @@ import (
 type Variable struct {
 	Description string
 	Type        cty.Type
+	RangePtr    *hcl.Range
 
 	// In case the version it is before 0.14 sensitive will always be false
 	// that was actually the default value for prior versions

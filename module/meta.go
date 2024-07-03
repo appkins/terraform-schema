@@ -5,6 +5,7 @@ package module
 
 import (
 	"github.com/hashicorp/go-version"
+	"github.com/hashicorp/hcl/v2"
 	tfaddr "github.com/hashicorp/terraform-registry-address"
 	"github.com/hashicorp/terraform-schema/backend"
 )
@@ -18,6 +19,7 @@ type Meta struct {
 	ProviderReferences   map[ProviderRef]tfaddr.Provider
 	ProviderRequirements ProviderRequirements
 	CoreRequirements     version.Constraints
+	Resources            map[string]Resource
 	Variables            map[string]Variable
 	Outputs              map[string]Output
 	ModuleCalls          map[string]DeclaredModuleCall
@@ -44,8 +46,9 @@ func (pr ProviderRequirements) Equals(reqs ProviderRequirements) bool {
 }
 
 type Backend struct {
-	Type string
-	Data backend.BackendData
+	Type     string
+	Data     backend.BackendData
+	RangePtr *hcl.Range
 }
 
 func (be *Backend) Equals(b *Backend) bool {
@@ -70,4 +73,6 @@ type ProviderRef struct {
 	// If not empty, Alias identifies which non-default (aliased) provider
 	// configuration this address refers to.
 	Alias string
+
+	RangePtr *hcl.Range
 }

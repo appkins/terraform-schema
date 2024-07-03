@@ -25,8 +25,7 @@ type decodedModule struct {
 	CloudBackend         *backend.Cloud
 	ProviderRequirements map[string]*providerRequirement
 	ProviderConfigs      map[string]*providerConfig
-	Resources            map[string]*resource
-	DataSources          map[string]*dataSource
+	Resources            map[string]*module.Resource
 	Variables            map[string]*module.Variable
 	Outputs              map[string]*module.Output
 	ModuleCalls          map[string]*module.DeclaredModuleCall
@@ -38,8 +37,7 @@ func newDecodedModule() *decodedModule {
 		Backends:             make(map[string]backend.BackendData),
 		ProviderRequirements: make(map[string]*providerRequirement),
 		ProviderConfigs:      make(map[string]*providerConfig),
-		Resources:            make(map[string]*resource),
-		DataSources:          make(map[string]*dataSource),
+		Resources:            make(map[string]*module.Resource),
 		Variables:            make(map[string]*module.Variable),
 		Outputs:              make(map[string]*module.Output),
 		ModuleCalls:          make(map[string]*module.DeclaredModuleCall),
@@ -48,8 +46,9 @@ func newDecodedModule() *decodedModule {
 
 // providerConfig represents a provider block in the configuration
 type providerConfig struct {
-	Name  string
-	Alias string
+	Name     string
+	Alias    string
+	RangePtr *hcl.Range
 }
 
 // loadModuleFromFile reads given file, interprets it and stores in given Module
@@ -62,6 +61,12 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 	diags = append(diags, contentDiags...)
 
 	for _, block := range content.Blocks {
+		var rng *hcl.Range
+		hclBody, ok := block.Body.(*hclsyntax.Body)
+		if ok {
+			rng = hclBody.Range().Ptr()
+		}
+
 		switch block.Type {
 
 		case "terraform":
@@ -156,20 +161,24 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 			}
 
 			mod.ProviderConfigs[providerKey] = &providerConfig{
-				Name:  name,
-				Alias: alias,
+				Name:     name,
+				Alias:    alias,
+				RangePtr: rng,
 			}
 
 		case "data":
 			content, _, contentDiags := block.Body.PartialContent(resourceSchema)
 			diags = append(diags, contentDiags...)
 
-			ds := &dataSource{
-				Type: block.Labels[0],
-				Name: block.Labels[1],
+			ds := &module.Resource{
+				Type:     block.Labels[0],
+				Name:     block.Labels[1],
+				Mode:     "data",
+				RangePtr: rng,
 			}
 
-			mod.DataSources[ds.MapKey()] = ds
+			mapKey := fmt.Sprintf("data.%s.%s", ds.Type, ds.Name)
+			mod.Resources[mapKey] = ds
 
 			if attr, defined := content.Attributes["provider"]; defined {
 				ref, aDiags := decodeProviderAttribute(attr)
@@ -187,12 +196,15 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 			content, _, contentDiags := block.Body.PartialContent(resourceSchema)
 			diags = append(diags, contentDiags...)
 
-			r := &resource{
-				Type: block.Labels[0],
-				Name: block.Labels[1],
+			r := &module.Resource{
+				Type:     block.Labels[0],
+				Name:     block.Labels[1],
+				RangePtr: rng,
 			}
 
-			mod.Resources[r.MapKey()] = r
+			mapKey := fmt.Sprintf("%s.%s", r.Type, r.Name)
+
+			mod.Resources[mapKey] = r
 
 			if attr, defined := content.Attributes["provider"]; defined {
 				ref, aDiags := decodeProviderAttribute(attr)
@@ -257,6 +269,7 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 				IsSensitive:  isSensitive,
 				DefaultValue: defaultValue,
 				TypeDefaults: defaults,
+				RangePtr:     rng,
 			}
 		case "output":
 			content, _, contentDiags := block.Body.PartialContent(outputSchema)
@@ -288,6 +301,7 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 				Description: description,
 				IsSensitive: isSensitive,
 				Value:       value,
+				RangePtr:    rng,
 			}
 		case "module":
 			content, remainingBody, contentDiags := block.Body.PartialContent(moduleSchema)
@@ -325,12 +339,6 @@ func loadModuleFromFile(file *hcl.File, mod *decodedModule) hcl.Diagnostics {
 			}
 
 			sort.Strings(inputNames)
-
-			var rng *hcl.Range
-			hclBody, ok := block.Body.(*hclsyntax.Body)
-			if ok {
-				rng = hclBody.Range().Ptr()
-			}
 
 			mod.ModuleCalls[name] = &module.DeclaredModuleCall{
 				LocalName:  name,

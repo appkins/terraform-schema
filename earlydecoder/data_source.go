@@ -3,20 +3,22 @@
 
 package earlydecoder
 
-import (
-	"fmt"
+// import (
+// 	"fmt"
 
-	"github.com/hashicorp/terraform-schema/module"
-)
+// 	"github.com/hashicorp/hcl/v2"
+// 	"github.com/hashicorp/terraform-schema/module"
+// )
 
-type dataSource struct {
-	Type     string
-	Name     string
-	Provider module.ProviderRef
-}
+// type dataSource struct {
+// 	Type     string
+// 	Name     string
+// 	Provider module.ProviderRef
+// 	RangePtr *hcl.Range
+// }
 
-// MapKey returns a string that can be used to uniquely identify the receiver
-// in a map[string]*dataSource.
-func (r *dataSource) MapKey() string {
-	return fmt.Sprintf("data.%s.%s", r.Type, r.Name)
-}
+// // MapKey returns a string that can be used to uniquely identify the receiver
+// // in a map[string]*dataSource.
+// func (r *dataSource) MapKey() string {
+// 	return fmt.Sprintf("data.%s.%s", r.Type, r.Name)
+// }

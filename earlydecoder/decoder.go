@@ -139,7 +139,9 @@ func LoadModule(path string, files map[string]*hcl.File) (*module.Meta, hcl.Diag
 		}
 	}
 
-	for _, resource := range mod.Resources {
+	resources := make(map[string]module.Resource)
+	for key, resource := range mod.Resources {
+
 		providerName := resource.Provider.LocalName
 
 		_, err := tfaddr.ParseProviderPart(providerName)
@@ -163,31 +165,7 @@ func LoadModule(path string, files map[string]*hcl.File) (*module.Meta, hcl.Diag
 
 			refs[localRef] = src
 		}
-	}
-
-	for _, dataSource := range mod.DataSources {
-		providerName := dataSource.Provider.LocalName
-
-		_, err := tfaddr.ParseProviderPart(providerName)
-		if err != nil {
-			diags = append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid provider name",
-				Detail:   fmt.Sprintf("%q is not a valid implied provider name: %s", providerName, err),
-			})
-			continue
-		}
-
-		localRef := module.ProviderRef{
-			LocalName: providerName,
-		}
-		if _, exists := refs[localRef]; !exists && providerName != "" {
-			src := addr.NewLegacyProvider(providerName)
-			if _, exists := providerRequirements[src]; !exists {
-				providerRequirements[src] = version.Constraints{}
-			}
-			refs[localRef] = src
-		}
+		resources[key] = *resource
 	}
 
 	variables := make(map[string]module.Variable)

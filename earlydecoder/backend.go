@@ -21,7 +21,7 @@ func decodeBackendsBlock(block *hcl.Block) (backend.BackendData, hcl.Diagnostics
 			if val.IsWhollyKnown() && val.Type() == cty.String {
 				return &backend.Remote{
 					Hostname: val.AsString(),
-				}, nil
+				}, diags
 			}
 		}
 

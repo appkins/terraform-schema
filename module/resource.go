@@ -5,12 +5,13 @@ package module
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/zclconf/go-cty/cty"
 )
 
-type Output struct {
+type Resource struct {
+	Type        string
+	Name        string
 	Description string
-	IsSensitive bool
-	Value       cty.Value
+	Provider    ProviderRef
+	Mode        string
 	RangePtr    *hcl.Range
 }
